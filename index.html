@@ -1,0 +1,2192 @@
+<!doctype html>
+<html lang="pt-BR" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glenn T. Seaborg: O Arquiteto dos Actinídeos</title>
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <!-- Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              serif: ["Merriweather", "serif"],
+            },
+            colors: {
+              amber: {
+                50: "#fffbeb",
+                100: "#fef3c7",
+                200: "#fde68a",
+                300: "#fcd34d",
+                400: "#fbbf24",
+                500: "#f59e0b",
+                600: "#d97706",
+                700: "#b45309",
+                800: "#92400e",
+                900: "#78350f",
+              },
+            },
+            animation: {
+              float: "float 6s ease-in-out infinite",
+              "fade-in": "fadeIn 0.8s ease-out forwards",
+            },
+            keyframes: {
+              float: {
+                "0%, 100%": { transform: "translateY(0)" },
+                "50%": { transform: "translateY(-10px)" },
+              },
+              fadeIn: {
+                "0%": { opacity: "0", transform: "translateY(10px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden;
+        background-color: #0f172a; /* Base dark to match sections and avoid white flashes */
+      }
+      body {
+        color: #1f2937;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding-top: 64px; /* Space for the fixed header */
+      }
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        height: 400px;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 0px; /* Hide horizontal scrollbar */
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(to bottom, #f59e0b, #d97706);
+        border-radius: 20px;
+        border: 2px solid #0f172a;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #fbbf24;
+      }
+      /* Ensure horizontal scrollbar is hidden for all browsers */
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: #f59e0b #0f172a;
+        overflow-x: hidden;
+      }
+      /* Scroll Animations */
+      .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition:
+          opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal-left {
+        opacity: 0;
+        transform: translateX(-40px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal-left.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      .reveal-right {
+        opacity: 0;
+        transform: translateX(40px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal-right.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      /* Mobile Drawer */
+      .mobile-drawer {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 280px;
+        height: 100vh;
+        background: #0f172a;
+        z-index: 100;
+        transition: right 0.35s ease;
+        padding: 5rem 2rem 2rem;
+      }
+      .mobile-drawer.open {
+        right: 0;
+      }
+      .mobile-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+      .mobile-overlay.open {
+        opacity: 1;
+        pointer-events: all;
+      }
+      /* Back to Top */
+      /* Lightbox */
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.95);
+        z-index: 200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        cursor: zoom-out;
+        backdrop-filter: blur(10px);
+      }
+      .lightbox.open {
+        display: flex;
+        animation: fadeIn 0.3s ease;
+      }
+      .lightbox img {
+        max-width: 90%;
+        max-height: 90vh;
+        border-radius: 1rem;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        cursor: default;
+        transition: transform 0.3s ease;
+      }
+      .lightbox img:hover {
+        transform: scale(1.02);
+      }
+      .lightbox-close {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      .lightbox-close:hover {
+        background: #f59e0b;
+        color: black;
+      }
+      #back-to-top {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 90;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #1e293b;
+        color: #f59e0b;
+        border: 2px solid #f59e0b;
+        cursor: pointer;
+        opacity: 0;
+        transform: translateY(20px);
+        transition:
+          opacity 0.3s,
+          transform 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+      #back-to-top.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      #back-to-top:hover {
+        background: #f59e0b;
+        color: #1e293b;
+      }
+      /* Scroll Progress */
+      #scroll-progress {
+        position: fixed;
+        top: 0; /* Align with the top of the fixed header */
+        left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        z-index: 110; /* Above the fixed nav (z-100) */
+        width: 0%;
+        transition: width 0.1s;
+      }
+      /* Particle canvas */
+      #hero-particles {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      /* Medicine placeholder */
+      .med-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3.5rem;
+      }
+      .med-placeholder.diag {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      }
+      .med-placeholder.treat {
+        background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      }
+      .med-placeholder.therapy {
+        background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+      }
+      /* Card glow on hover */
+      .med-card:hover {
+        box-shadow: 0 8px 40px rgba(245, 158, 11, 0.15);
+        transform: translateY(-4px);
+      }
+      .med-card {
+        transition:
+          box-shadow 0.3s,
+          transform 0.3s;
+      }
+
+      /* New Sections CSS */
+      .chem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+      }
+      .orbital-viz {
+        perspective: 1000px;
+      }
+      .orbital-layer {
+        transform-style: preserve-3d;
+        transition: transform 1s ease;
+      }
+      .electron-orbit {
+        animation: orbit 4s linear infinite;
+      }
+      @keyframes orbit {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* 3D Container */
+      #island-container {
+        width: 100%;
+        height: 600px;
+        border-radius: 2rem;
+        overflow: hidden;
+        position: relative;
+      }
+      #island-overlay {
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom,
+          rgba(15, 23, 42, 0) 0%,
+          rgba(15, 23, 42, 1) 100%
+        );
+      }
+    </style>
+  </head>
+  <body class="antialiased selection:bg-amber-200 selection:text-amber-900">
+    <!-- Navigation -->
+    <!-- Scroll Progress -->
+    <div id="scroll-progress"></div>
+
+    <!-- Navigation -->
+    <nav
+      class="bg-slate-900/95 backdrop-blur text-white shadow-lg fixed top-0 left-0 w-full z-[100] transition-all duration-300"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between"
+      >
+        <div
+          class="flex items-center space-x-3 group cursor-pointer"
+          onclick="window.scrollTo(0, 0)"
+        >
+          <span
+            class="text-2xl group-hover:rotate-180 transition-transform duration-700"
+            >⚛</span
+          >
+          <span
+            class="font-bold text-lg tracking-wide uppercase bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-amber-500"
+          >
+            Seaborg & A Tabela
+          </span>
+        </div>
+        <div
+          class="hidden md:flex space-x-6 text-xs lg:text-sm font-medium tracking-wide"
+        >
+          <a
+            href="#concept"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400"
+            >Conceito</a
+          >
+          <a
+            href="#orbitals"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400 text-amber-200"
+            >Orbitais 5f</a
+          >
+          <a
+            href="#discoveries"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400"
+            >Linha do Tempo</a
+          >
+          <a
+            href="#island"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400 text-amber-200"
+            >Ilha de Estabilidade</a
+          >
+          <a
+            href="#explorer"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400"
+            >Explorador</a
+          >
+          <a
+            href="#manhattan"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400"
+            >Manhattan</a
+          >
+          <a
+            href="#medicine"
+            class="hover:text-amber-400 transition-colors py-2 border-b-2 border-transparent hover:border-amber-400"
+            >Impacto</a
+          >
+        </div>
+        <!-- Mobile Menu Button (Hamburger) -->
+        <button
+          id="mobile-menu-btn"
+          class="md:hidden text-gray-300 hover:text-white focus:outline-none"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16m-7 6h7"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Drawer -->
+    <div
+      id="mobile-overlay"
+      class="mobile-overlay"
+      onclick="toggleMobileMenu()"
+    ></div>
+    <div id="mobile-drawer" class="mobile-drawer">
+      <button
+        class="absolute top-4 right-4 text-slate-400 hover:text-white"
+        onclick="toggleMobileMenu()"
+      >
+        <svg
+          class="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+      </button>
+      <div
+        class="flex flex-col space-y-6 text-lg font-medium text-slate-300 mt-8"
+      >
+        <a
+          href="#concept"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2"
+          >Conceito Actinídeo</a
+        >
+        <a
+          href="#orbitals"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2 text-amber-200"
+          >Orbitais 5f</a
+        >
+        <a
+          href="#discoveries"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2"
+          >Linha do Tempo</a
+        >
+        <a
+          href="#island"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2 text-amber-200"
+          >Ilha de Estabilidade</a
+        >
+        <a
+          href="#explorer"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2"
+          >Explorador</a
+        >
+        <a
+          href="#manhattan"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2"
+          >Manhattan Project</a
+        >
+        <a
+          href="#medicine"
+          onclick="toggleMobileMenu()"
+          class="hover:text-amber-400 transition-colors block border-b border-slate-700 pb-2"
+          >Impacto Médico</a
+        >
+      </div>
+    </div>
+
+    <!-- Hero Section -->
+    <header
+      class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-amber-50/50 border-b border-stone-200"
+    >
+      <div
+        class="absolute inset-0 opacity-5 pointer-events-none"
+        style="
+          background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+          background-size: 24px 24px;
+        "
+      ></div>
+
+      <div
+        class="max-w-7xl mx-auto px-4 py-16 lg:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10"
+      >
+        <!-- Content -->
+        <div class="order-2 lg:order-1 animate-fade-in">
+          <div
+            class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full mb-6 uppercase tracking-widest shadow-sm"
+          >
+            <span>🏆</span>
+            <span>Prêmio Nobel de 1951</span>
+          </div>
+          <h1
+            class="text-4xl lg:text-6xl font-extrabold text-slate-900 mb-6 leading-tight font-serif"
+          >
+            Redesenhando a <br />
+            <span
+              class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-500 italic"
+              >Arquitetura da Matéria</span
+            >
+          </h1>
+          <p class="text-lg text-slate-600 mb-8 leading-relaxed max-w-xl">
+            Glenn T. Seaborg (1912–1999) não apenas descobriu 10 novos
+            elementos; ele reformulou a própria estrutura da química ao propor o
+            <strong>Conceito Actinídeo</strong> em 1944.
+          </p>
+          <div class="flex flex-wrap gap-4 items-center">
+            <a
+              href="#concept"
+              class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition transform hover:-translate-y-1 hover:shadow-xl focus:ring-4 focus:ring-slate-300"
+            >
+              Explorar Legado
+            </a>
+            <a
+              href="#discoveries"
+              class="px-6 py-4 text-slate-700 font-semibold hover:text-amber-700 transition flex items-center group"
+            >
+              Ver Descobertas
+              <svg
+                class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                ></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Image -->
+        <div class="order-1 lg:order-2 flex justify-center perspective-1000">
+          <div
+            class="relative w-full max-w-md aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl border-8 border-white bg-slate-200 transform rotate-1 hover:rotate-0 transition-transform duration-500 animate-float"
+          >
+            <!-- Wikimedia Image: Glenn Seaborg 1964 -->
+            <img
+              src="images/seaborg-hero.png"
+              alt="Retrato de Glenn T. Seaborg à frente da tabela periódica"
+              class="w-full h-full object-cover"
+              loading="eager"
+            />
+            <div
+              class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6 text-white"
+            >
+              <p class="font-bold font-serif text-lg">Glenn T. Seaborg</p>
+              <p class="text-xs opacity-80">Berkeley, 1964</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Section 1: Concept -->
+      <section id="concept" class="py-24 scroll-mt-24 bg-[#fdfbf7]">
+        <div class="max-w-7xl mx-auto px-4">
+          <div class="max-w-3xl mx-auto text-center mb-16">
+            <h2
+              class="text-3xl lg:text-4xl font-bold text-slate-900 mb-6 font-serif"
+            >
+              O Salto de Fé: A Nova Série
+              <span class="text-amber-600 font-sans">f</span>
+            </h2>
+            <p class="text-slate-600 text-lg leading-relaxed">
+              Antes de 1944, a ciência acreditava que os elementos transurânicos
+              eram metais de transição (Bloco D). Seaborg arriscou sua carreira
+              científica ao propor que eles formavam uma nova série, os
+              <strong>Actinídeos</strong> (Bloco F), análoga aos Lantanídeos.
+            </p>
+          </div>
+
+          <div
+            class="glass-panel rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl"
+          >
+            <div class="grid grid-cols-1 lg:grid-cols-2">
+              <!-- Controls -->
+              <div
+                class="p-8 lg:p-12 bg-slate-50/50 border-r border-slate-200 flex flex-col justify-center"
+              >
+                <h3 class="text-xl font-bold mb-4 text-slate-800">
+                  Uma Mudança de Paradigma
+                </h3>
+                <p class="text-slate-600 mb-8 text-sm">
+                  Esta reestruturação permitiu a previsão correta das
+                  propriedades químicas dos elementos ainda não descobertos,
+                  facilitando sua síntese.
+                </p>
+
+                <button
+                  id="toggle-table-btn"
+                  class="group relative w-full overflow-hidden rounded-xl bg-slate-900 px-8 py-4 text-white shadow transition-all hover:bg-slate-800 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-slate-300"
+                >
+                  <span
+                    class="absolute inset-0 h-full w-full bg-gradient-to-r from-amber-500 to-amber-600 opacity-0 transition-opacity group-hover:opacity-100"
+                  ></span>
+                  <div
+                    class="relative flex items-center justify-center space-x-3"
+                  >
+                    <span
+                      class="text-xl transition-transform group-hover:rotate-180"
+                      >↻</span
+                    >
+                    <span id="btn-text" class="font-bold tracking-wide"
+                      >Alternar para Visão de Seaborg</span
+                    >
+                  </div>
+                </button>
+              </div>
+
+              <!-- Visualization -->
+              <div
+                class="p-8 lg:p-12 flex items-center justify-center bg-white min-h-[300px] relative"
+              >
+                <!-- Grid Background -->
+                <div
+                  class="absolute inset-0 opacity-10"
+                  style="
+                    background-image:
+                      linear-gradient(#94a3b8 1px, transparent 1px),
+                      linear-gradient(90deg, #94a3b8 1px, transparent 1px);
+                    background-size: 20px 20px;
+                  "
+                ></div>
+
+                <!-- Old View -->
+                <div id="view-old" class="w-full">
+                  <p
+                    class="text-center text-xs font-bold text-red-500 mb-6 uppercase tracking-widest bg-red-50 inline-block px-3 py-1 rounded-full mx-auto border border-red-100"
+                  >
+                    ⚠️ Hipótese Antiga (Incorreta)
+                  </p>
+                  <div
+                    class="space-y-2 opacity-60 grayscale transition-all duration-500 overflow-x-auto pb-2"
+                  >
+                    <div class="flex justify-center space-x-1 min-w-max px-4">
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-xs"
+                      >
+                        ...
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-sm font-bold text-slate-700"
+                      >
+                        W
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-sm font-bold text-slate-700"
+                      >
+                        Re
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-sm font-bold text-slate-700"
+                      >
+                        Os
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-sm font-bold text-slate-700"
+                      >
+                        Ir
+                      </div>
+                    </div>
+                    <div class="flex justify-center space-x-1 min-w-max px-4">
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border border-slate-300 rounded bg-slate-100 font-mono text-xs"
+                      >
+                        ...
+                      </div>
+                      <!-- Wrong placement of actinides under Transition Metals -->
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border-2 border-red-300 bg-red-50 rounded font-bold text-red-800 shadow-sm relative group cursor-help"
+                      >
+                        U
+                        <span
+                          class="absolute -top-8 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap"
+                          >Errado: Abaixo do W</span
+                        >
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border-2 border-red-300 bg-red-50 rounded font-bold text-red-800 shadow-sm"
+                      >
+                        Np
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border-2 border-red-300 bg-red-50 rounded font-bold text-red-800 shadow-sm"
+                      >
+                        Pu
+                      </div>
+                      <div
+                        class="w-12 h-12 flex items-center justify-center border-2 border-red-300 bg-red-50 rounded font-bold text-red-800 shadow-sm"
+                      >
+                        Am ...
+                      </div>
+                    </div>
+                  </div>
+                  <p
+                    class="text-center text-xs text-slate-400 mt-4 max-w-xs mx-auto"
+                  >
+                    Tentavam encaixar os transurânicos no corpo principal da
+                    tabela.
+                  </p>
+                </div>
+
+                <!-- New View -->
+                <div id="view-new" class="w-full hidden animate-fade-in">
+                  <p
+                    class="text-center text-xs font-bold text-emerald-600 mb-6 uppercase tracking-widest bg-emerald-50 inline-block px-3 py-1 rounded-full mx-auto border border-emerald-100"
+                  >
+                    ✅ Conceito Actinídeo (Aceito)
+                  </p>
+                  <div class="flex flex-col items-center space-y-4">
+                    <!-- Main Body placeholder -->
+                    <div class="flex space-x-1 opacity-50 scale-90">
+                      <div class="w-8 h-8 bg-slate-200 rounded"></div>
+                      <div class="w-8 h-8 bg-slate-200 rounded"></div>
+                      <div class="w-8 h-8 bg-slate-200 rounded"></div>
+                      <div
+                        class="w-8 h-8 bg-indigo-200 rounded text-[10px] flex items-center justify-center"
+                      >
+                        La
+                      </div>
+                      <div class="w-8 h-8 bg-slate-200 rounded"></div>
+                    </div>
+
+                    <!-- Actinide Series highlighted -->
+                    <div
+                      class="relative p-4 bg-indigo-50/50 rounded-xl border-2 border-dashed border-indigo-200"
+                    >
+                      <div
+                        class="absolute -top-3 left-4 bg-white px-2 text-[10px] font-bold text-indigo-500 uppercase"
+                      >
+                        Nova Série (Abaixo)
+                      </div>
+                      <div class="flex flex-wrap justify-center gap-1">
+                        <div
+                          class="w-10 h-10 bg-white border border-indigo-100 rounded shadow-sm flex items-center justify-center font-bold text-xs text-slate-500"
+                        >
+                          Ac
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-white border border-indigo-100 rounded shadow-sm flex items-center justify-center font-bold text-xs text-slate-500"
+                        >
+                          Th
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-white border border-indigo-100 rounded shadow-sm flex items-center justify-center font-bold text-xs text-slate-500"
+                        >
+                          Pa
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-amber-400 text-white rounded shadow-md flex items-center justify-center font-bold text-sm ring-2 ring-amber-200 transform scale-110 z-10"
+                        >
+                          U
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-amber-500 text-white rounded shadow-md flex items-center justify-center font-bold text-sm"
+                        >
+                          Np
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-amber-500 text-white rounded shadow-md flex items-center justify-center font-bold text-sm"
+                        >
+                          Pu
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-amber-500 text-white rounded shadow-md flex items-center justify-center font-bold text-sm"
+                        >
+                          Am
+                        </div>
+                        <div
+                          class="w-10 h-10 bg-indigo-100 text-indigo-800 rounded flex items-center justify-center font-bold text-xs"
+                        >
+                          ...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW SECTION 1: Electronic Configuration (The "Why") -->
+      <section id="orbitals" class="py-20 md:py-32 relative bg-slate-950">
+        <div class="max-w-7xl mx-auto px-4">
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div
+              class="glass-panel p-8 rounded-2xl border border-slate-800 bg-slate-900/40"
+            >
+              <h3
+                class="text-amber-400 font-bold mb-4 uppercase tracking-widest text-sm"
+              >
+                Química Avançada
+              </h3>
+              <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+                A Revolução das Orbitais 5f
+              </h2>
+              <p class="text-slate-300 leading-relaxed mb-6">
+                Antes de Seaborg, acreditava-se que os elementos transurânicos
+                se comportariam como metais de transição (preenchendo a camada
+                <b>6d</b>).
+              </p>
+              <p class="text-slate-300 leading-relaxed mb-6">
+                Seaborg propôs que eles formavam uma nova série, os
+                <b>Actinídeos</b>, preenchendo a camada interna <b>5f</b>. Isso
+                mudou toda a estrutura da Tabela Periódica moderna.
+              </p>
+              <div
+                class="flex items-center space-x-4 text-xs font-mono text-amber-200 bg-slate-900/50 p-4 rounded-lg"
+              >
+                <div>
+                  <span class="block text-slate-500">Hipótese Antiga</span>
+                  <span class="block text-lg">6d<sup>1-10</sup></span>
+                </div>
+                <div class="text-2xl">→</div>
+                <div>
+                  <span class="block text-slate-500">Teoria Seaborg</span>
+                  <span class="block text-lg text-amber-400 font-bold"
+                    >5f<sup>1-14</sup></span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="relative h-80 flex items-center justify-center">
+              <!-- Simple CSS Atom Viz -->
+              <div class="relative w-64 h-64 orbital-viz">
+                <div
+                  class="absolute inset-0 border border-slate-600 rounded-full opacity-30 electron-orbit"
+                  style="animation-duration: 8s"
+                ></div>
+                <div
+                  class="absolute inset-0 border border-slate-600 rounded-full opacity-30 electron-orbit"
+                  style="animation-duration: 6s; transform: rotate(45deg)"
+                ></div>
+                <div
+                  class="absolute inset-0 border border-slate-600 rounded-full opacity-30 electron-orbit"
+                  style="animation-duration: 7s; transform: rotate(-45deg)"
+                ></div>
+
+                <!-- 5f Emphasis -->
+                <div
+                  class="absolute inset-4 border-2 border-amber-500/50 rounded-full electron-orbit shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                  style="animation-duration: 4s"
+                ></div>
+
+                <div
+                  class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-amber-500 rounded-full shadow-[0_0_30px_#f59e0b]"
+                ></div>
+
+                <div
+                  class="absolute top-2 left-1/2 w-3 h-3 bg-white rounded-full shadow-lg electron-orbit"
+                ></div>
+              </div>
+              <p class="absolute bottom-0 text-center text-slate-500 text-sm">
+                Representação simplificada do preenchimento eletrônico
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="discoveries" class="py-24 scroll-mt-24 bg-white">
+        <div
+          class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center"
+        >
+          <!-- Content Side -->
+          <div class="lg:col-span-4 space-y-6">
+            <h2 class="text-3xl font-bold text-slate-900 font-serif">
+              A Fábrica de Elementos
+            </h2>
+            <div class="relative rounded-2xl overflow-hidden shadow-lg group">
+              <!-- Wikimedia Image: Berkeley 60-inch Cyclotron -->
+              <img
+                src="images/machine.png"
+                alt="Ciclotron de 60 polegadas de Berkeley"
+                class="w-full aspect-video object-cover transition duration-700 group-hover:scale-105"
+              />
+              <div
+                class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4"
+              >
+                <p class="text-white text-xs font-medium">
+                  Ciclotron de 60 polegadas (1939)
+                </p>
+              </div>
+            </div>
+            <p class="text-slate-600 text-sm leading-relaxed">
+              Utilizando poderosos aceleradores de partículas no Laboratório de
+              Radiação de Berkeley, a equipe de Seaborg bombardeou núcleos
+              atômicos para forjar elementos nunca antes vistos na Terra.
+            </p>
+            <div
+              class="flex items-center space-x-2 text-amber-600 text-sm font-bold"
+            >
+              <span
+                class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"
+              ></span>
+              <span>10 Elementos Descobertos (1940-1974)</span>
+            </div>
+          </div>
+
+          <!-- Chart Side -->
+          <div class="lg:col-span-8">
+            <div
+              class="glass-panel p-6 rounded-2xl shadow-xl border border-white/50 h-full"
+            >
+              <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW SECTION 2: Island of Stability (The WOW Factor) -->
+      <section id="island" class="py-24 relative bg-slate-950 overflow-hidden">
+        <div
+          class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"
+        ></div>
+
+        <div class="max-w-7xl mx-auto px-4 mb-12 text-center relative z-10">
+          <div
+            class="inline-block px-4 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-4"
+          >
+            Teoria de Seaborg
+          </div>
+          <h2
+            class="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-amber-400 to-amber-600 mb-6 font-serif"
+          >
+            A Ilha de Estabilidade
+          </h2>
+          <p class="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
+            Uma das previsões mais audaciosas de Seaborg: a existência de
+            elementos superpesados que desafiam a tendência de decaimento
+            instantâneo.
+          </p>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 relative z-10">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Information sidebar -->
+            <div class="lg:col-span-4 space-y-6">
+              <div
+                class="glass-panel p-8 rounded-[2rem] border border-white/5 bg-slate-900/40 backdrop-blur-xl reveal-left"
+              >
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                  <span
+                    class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center mr-3 text-amber-500"
+                    >?</span
+                  >
+                  O que é esta Ilha?
+                </h3>
+                <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                  A maioria dos elementos pesados desaparece em milissegundos.
+                  Seaborg propôs que, ao atingir certos
+                  <strong>"Números Mágicos"</strong> de prótons e neutrões, o
+                  núcleo se tornaria muito mais estável.
+                </p>
+                <div
+                  class="relative rounded-xl overflow-hidden border border-amber-500/30 group cursor-zoom-in"
+                  onclick="openLightbox('images/ilha-estabilidade.jpg')"
+                >
+                  <img
+                    src="images/ilha-estabilidade.jpg"
+                    class="w-full h-auto transition-transform duration-500 group-hover:scale-105"
+                    alt="Diagrama da Ilha de Estabilidade"
+                  />
+                  <div
+                    class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3"
+                  >
+                    <p class="text-[10px] text-white flex items-center">
+                      <svg
+                        class="w-3 h-3 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                        ></path>
+                      </svg>
+                      Clique para ampliar o diagrama
+                    </p>
+                  </div>
+                </div>
+                <div
+                  class="mt-6 pt-6 border-t border-white/5 space-y-4 text-xs"
+                >
+                  <div class="flex items-center text-slate-400">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 mr-3"></span>
+                    <span><strong>Eixo X:</strong> Número de Neutrões (N)</span>
+                  </div>
+                  <div class="flex items-center text-slate-400">
+                    <span
+                      class="w-2 h-2 rounded-full bg-indigo-500 mr-3"
+                    ></span>
+                    <span><strong>Eixo Y:</strong> Número de Prótons (Z)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3D Visualization -->
+            <div class="lg:col-span-8 relative">
+              <div
+                id="island-container"
+                class="w-full h-[600px] rounded-[2.5rem] bg-slate-900/50 border border-white/5 shadow-2xl relative overflow-hidden group"
+              >
+                <!-- Instruction Overlay -->
+                <div
+                  id="island-instruction"
+                  class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 transition-opacity duration-700 pointer-events-none group-hover:opacity-0"
+                >
+                  <div class="text-center">
+                    <div
+                      class="w-16 h-16 border-2 border-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"
+                    >
+                      <svg
+                        class="w-8 h-8 text-amber-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                        ></path>
+                      </svg>
+                    </div>
+                    <p
+                      class="text-white font-bold tracking-widest text-sm uppercase"
+                    >
+                      Arraste para Ver em 3D
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Labels Overlay -->
+                <div
+                  class="absolute top-6 left-6 z-20 space-y-2 pointer-events-none"
+                >
+                  <div
+                    class="px-3 py-1.5 bg-indigo-950/80 border border-indigo-500/30 rounded-lg text-[10px] font-bold text-indigo-300 uppercase tracking-wider backdrop-blur-md"
+                  >
+                    Mar de Instabilidade
+                  </div>
+                </div>
+                <div class="absolute top-24 right-1/3 z-20 pointer-events-none">
+                  <div
+                    class="px-3 py-1.5 bg-amber-950/80 border border-amber-500/30 rounded-lg text-[10px] font-bold text-amber-300 uppercase tracking-wider backdrop-blur-md flex items-center"
+                  >
+                    <span
+                      class="w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-2"
+                    ></span>
+                    Ilha de Estabilidade
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="explorer" class="py-24 scroll-mt-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4">
+          <div
+            class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 lg:p-16 text-white shadow-2xl relative overflow-hidden"
+          >
+            <!-- Decor -->
+            <div
+              class="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl"
+            ></div>
+            <div
+              class="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"
+            ></div>
+
+            <div class="relative z-10">
+              <div class="text-center mb-12">
+                <h2 class="text-3xl lg:text-4xl font-bold mb-4 font-serif">
+                  Explorador Transurânico
+                </h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">
+                  Navegue pelos elementos que expandiram as fronteiras da
+                  química. Selecione um símbolo para revelar sua história.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                <!-- Grid of Elements -->
+                <div class="grid grid-cols-5 gap-3 sm:gap-4" id="btn-grid">
+                  <!-- Dynamically filled -->
+                </div>
+
+                <!-- Detail Card -->
+                <div
+                  id="el-card"
+                  class="bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl p-8 lg:p-10 transition-all duration-300 min-h-[300px] flex flex-col justify-center"
+                >
+                  <div class="flex justify-between items-start mb-6">
+                    <div>
+                      <h3
+                        id="el-name"
+                        class="text-4xl font-black mb-2 tracking-tight text-white"
+                      >
+                        Plutônio
+                      </h3>
+                      <p id="el-origin" class="text-sm text-slate-400 italic">
+                        Nomeado em homenagem a Plutão
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <span
+                        id="el-num"
+                        class="block text-5xl font-black text-amber-500/20 leading-none select-none"
+                        >94</span
+                      >
+                    </div>
+                  </div>
+
+                  <p
+                    id="el-desc"
+                    class="text-slate-300 text-lg leading-relaxed mb-8 font-light"
+                  >
+                    Carregando dados...
+                  </p>
+
+                  <div class="flex flex-wrap gap-3 mt-auto">
+                    <div
+                      class="bg-white/5 border border-white/10 px-4 py-2 rounded-lg"
+                    >
+                      <span
+                        class="block text-[10px] text-slate-500 uppercase tracking-wider font-bold"
+                        >Descoberto</span
+                      >
+                      <span
+                        id="el-year"
+                        class="text-amber-400 font-mono text-lg"
+                        >1940</span
+                      >
+                    </div>
+                    <div
+                      class="bg-white/5 border border-white/10 px-4 py-2 rounded-lg"
+                    >
+                      <span
+                        class="block text-[10px] text-slate-500 uppercase tracking-wider font-bold"
+                        >Uso Principal</span
+                      >
+                      <span id="el-usage" class="text-white font-medium"
+                        >Energia</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW SECTION 3: Manhattan Project -->
+      <section id="manhattan" class="py-24 bg-slate-950 relative">
+        <div class="max-w-7xl mx-auto px-4">
+          <div class="flex flex-col md:flex-row gap-12">
+            <div class="md:w-1/3">
+              <h4
+                class="text-amber-500 font-bold mb-2 uppercase tracking-widest text-sm"
+              >
+                Contexto Histórico
+              </h4>
+              <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+                O Projeto Manhattan
+              </h2>
+              <div class="w-12 h-1 bg-amber-500 mb-6"></div>
+              <p class="text-slate-400 text-sm leading-relaxed">
+                Aos 30 anos, Seaborg liderou a secção de química do Plutônio no
+                Laboratório Metalúrgico de Chicago. Sua missão era vital e
+                secreta: isolar Plutônio suficiente para criar uma bomba
+                atômica.
+              </p>
+            </div>
+            <div class="md:w-2/3 space-y-8">
+              <div
+                class="glass-panel p-6 border-l-4 border-amber-600 bg-slate-900/60 shadow-xl"
+              >
+                <h3 class="text-white font-bold text-xl mb-2">
+                  10 de Setembro, 1942
+                </h3>
+                <p class="text-slate-200">
+                  Pela primeira vez na história, uma quantidade visível de uma
+                  substância transurânica sintética (Plutônio-239) foi pesada.
+                  <span class="text-amber-400 font-bold"
+                    >Apenas 2.77 microgramas.</span
+                  >
+                </p>
+              </div>
+              <div
+                class="glass-panel p-6 border-l-4 border-slate-600 bg-slate-900/60 shadow-xl"
+              >
+                <h3 class="text-white font-bold text-xl mb-2">
+                  A Patente Secreta
+                </h3>
+                <p class="text-slate-200">
+                  A patente de Seaborg para o processo de separação do Plutônio
+                  foi classificada como secreta e só emitida anos após a guerra.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="medicine" class="py-24 scroll-mt-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+          <div class="text-center mb-16">
+            <h2
+              class="text-3xl lg:text-4xl font-bold text-slate-900 font-serif mb-4"
+            >
+              Do Laboratório para a Vida
+            </h2>
+            <p class="text-slate-600 max-w-2xl mx-auto">
+              O legado de Seaborg vai além da teoria. Seus isótopos
+              transformaram a medicina nuclear moderna, salvando milhões de
+              vidas.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Card 1 -->
+            <div
+              class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 hover:shadow-xl transition-shadow group"
+            >
+              <div
+                class="h-48 rounded-xl bg-slate-100 mb-6 overflow-hidden relative"
+              >
+                <!-- CSS Placeholder -->
+                <div
+                  class="w-full h-full med-placeholder diag text-emerald-600 transition duration-700 group-hover:scale-110"
+                >
+                  🧬
+                </div>
+                <div
+                  class="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded"
+                >
+                  Diagnóstico
+                </div>
+              </div>
+              <h3 class="text-xl font-bold text-slate-800 mb-2">
+                Tecnécio-99m
+              </h3>
+              <p class="text-slate-500 text-sm mb-4">
+                O "carro-chefe" da medicina nuclear. Utilizado em mais de 20
+                milhões de procedimentos diagnósticos anualmente.
+              </p>
+              <div class="h-1 w-12 bg-emerald-500 rounded-full"></div>
+            </div>
+
+            <!-- Card 2 -->
+            <div
+              class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 hover:shadow-xl transition-shadow group"
+            >
+              <div
+                class="h-48 rounded-xl bg-slate-100 mb-6 overflow-hidden relative"
+              >
+                <!-- CSS Placeholder -->
+                <div
+                  class="w-full h-full med-placeholder treat text-indigo-600 transition duration-700 group-hover:scale-110"
+                >
+                  ☢️
+                </div>
+                <div
+                  class="absolute top-2 right-2 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded"
+                >
+                  Tratamento
+                </div>
+              </div>
+              <h3 class="text-xl font-bold text-slate-800 mb-2">Cobalto-60</h3>
+              <p class="text-slate-500 text-sm mb-4">
+                Revolucionou a radioterapia, permitindo o tratamento preciso de
+                tumores profundos antes inacessíveis.
+              </p>
+              <div class="h-1 w-12 bg-indigo-500 rounded-full"></div>
+            </div>
+
+            <!-- Card 3 -->
+            <div
+              class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 hover:shadow-xl transition-shadow group"
+            >
+              <div
+                class="h-48 rounded-xl bg-slate-100 mb-6 overflow-hidden relative"
+              >
+                <!-- CSS Placeholder -->
+                <div
+                  class="w-full h-full med-placeholder therapy text-purple-600 transition duration-700 group-hover:scale-110"
+                >
+                  💊
+                </div>
+                <div
+                  class="absolute top-2 right-2 bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded"
+                >
+                  Terapia
+                </div>
+              </div>
+              <h3 class="text-xl font-bold text-slate-800 mb-2">Iodo-131</h3>
+              <p class="text-slate-500 text-sm mb-4">
+                Descoberto com a ajuda de Seaborg, salvou a vida de sua própria
+                mãe, tratando sua doença tireoidiana.
+              </p>
+              <div class="h-1 w-12 bg-purple-500 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW SECTION 4: Legacy & Peace -->
+      <section
+        id="legacy"
+        class="py-24 bg-gradient-to-b from-slate-900 to-black text-center"
+      >
+        <div class="max-w-7xl mx-auto px-4">
+          <svg
+            class="w-12 h-12 text-amber-500 mx-auto mb-6 opacity-80"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+            ></path>
+          </svg>
+          <h2 class="text-3xl md:text-5xl font-serif text-white mb-8">
+            Da Guerra para a Paz
+          </h2>
+          <blockquote
+            class="text-xl md:text-2xl text-slate-300 italic leading-relaxed mb-10"
+          >
+            "O poder do átomo deve ser usado para curar, não para destruir. A
+            ciência é a chave para o nosso futuro."
+          </blockquote>
+          <p class="text-slate-400 mb-8 leading-relaxed">
+            Glenn Seaborg aconselhou <b>10 presidentes norte-americanos</b>, de
+            Truman a Clinton. Ele foi um defensor incansável do
+            <b>Tratado de Proibição Limitada de Testes Nucleares (1963)</b> e da
+            educação científica.
+          </p>
+          <div
+            class="inline-block px-6 py-2 border border-slate-700 rounded-full text-xs uppercase tracking-widest text-slate-500"
+          >
+            Nobel da Química 1951 • Presidente da AEC
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 border-t border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 text-center">
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 text-left max-w-4xl mx-auto border-t border-slate-800 pt-12"
+        >
+          <div>
+            <h4
+              class="text-white font-bold mb-4 uppercase tracking-wider text-xs"
+            >
+              Fontes & Referências
+            </h4>
+            <ul class="space-y-2 text-sm">
+              <li>
+                <a
+                  href="https://pt.wikipedia.org/wiki/Glenn_Theodore_Seaborg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="hover:text-amber-400 transition"
+                  >Glenn Theodore Seaborg - Wikipédia</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://www.fq.pt/biografias/seaborg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="hover:text-amber-400 transition"
+                  >Biografia de Seaborg - FQ.pt</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://www.deviante.com.br/noticias/ciencia/ilha-de-estabilidade/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="hover:text-amber-400 transition"
+                  >Ilha de Estabilidade - Deviante</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4
+              class="text-white font-bold mb-4 uppercase tracking-wider text-xs"
+            >
+              Sobre o Projeto
+            </h4>
+            <p class="text-sm">
+              Desenvolvido como parte do trabalho escolar de Física e Química
+              (2025/2026).
+            </p>
+            <p class="text-sm mt-2">
+              Tema: A evolução da Tabela Periódica e as contribuições em sua
+              linha do tempo.
+            </p>
+          </div>
+        </div>
+
+        <blockquote
+          class="text-xl md:text-2xl font-serif text-white italic mb-8 max-w-2xl mx-auto leading-relaxed"
+        >
+          "Há uma beleza na descoberta... uma afinidade entre a química e a
+          poesia."
+        </blockquote>
+        <div
+          class="w-16 h-1 bg-gradient-to-r from-amber-500 to-amber-600 mx-auto mb-8 rounded-full"
+        ></div>
+        <p class="text-sm opacity-60">
+          Desenvolvido por: <b>Maurício Freitas</b> & <b>Avril Nuñez</b>; com
+          auxílio de modelos de IA, como Gemini e Claude.
+        </p>
+        <p class="text-xs mt-2 opacity-40 uppercase tracking-widest font-bold">
+          Glenn T. Seaborg • 1912 - 1999
+        </p>
+      </div>
+
+      <!-- Back to Top -->
+      <button
+        id="back-to-top"
+        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        aria-label="Voltar ao topo"
+      >
+        ↑
+      </button>
+    </footer>
+
+    <!-- JS Logic -->
+    <script>
+      // DOM Elements
+      const mobileBtn = document.getElementById("mobile-menu-btn");
+      const mobileDrawer = document.getElementById("mobile-drawer");
+      const mobileOverlay = document.getElementById("mobile-overlay");
+
+      // Mobile Menu Toggle
+      function toggleMobileMenu() {
+        mobileDrawer.classList.toggle("open");
+        mobileOverlay.classList.toggle("open");
+      }
+
+      if (mobileBtn) {
+        mobileBtn.addEventListener("click", toggleMobileMenu);
+      }
+
+      // Initial Fade In
+      document.body.classList.add(
+        "opacity-0",
+        "transition-opacity",
+        "duration-1000",
+      );
+      window.onload = () => {
+        document.body.classList.remove("opacity-0");
+      };
+
+      // Scroll Progress & Back to Top
+      const scrollProgress = document.getElementById("scroll-progress");
+      const backToTopBtn = document.getElementById("back-to-top");
+
+      window.addEventListener("scroll", () => {
+        // Progress
+        const winScroll =
+          document.body.scrollTop || document.documentElement.scrollTop;
+        const height =
+          document.documentElement.scrollHeight -
+          document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        if (scrollProgress) scrollProgress.style.width = scrolled + "%";
+
+        // Back to Top
+        if (winScroll > 300) {
+          backToTopBtn.classList.add("show");
+        } else {
+          backToTopBtn.classList.remove("show");
+        }
+      });
+
+      // Intersection Observer for Animations
+      const observerOptions = {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.1,
+      };
+
+      const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target); // Only animate once
+          }
+        });
+      }, observerOptions);
+
+      // Add classes to sections for animation
+      document.querySelectorAll("section").forEach((section) => {
+        section.classList.add("reveal");
+        observer.observe(section);
+      });
+      document.querySelectorAll(".glass-panel").forEach((el) => {
+        el.classList.add("reveal-right");
+        observer.observe(el);
+      });
+
+      // Element Data (Fixed Images)
+      // Mapped available images: seaborg-hero.png, machine.png, curiosity.jpg, californio.jpg, fermi.jpg, radiation.png, seaborg-tp.png
+      const elements = {
+        Pu: {
+          name: "Plutônio",
+          symbol: "Pu",
+          num: 94,
+          year: 1940,
+          usage: "Combustível Nuclear",
+          origin: "Planeta Plutão",
+          desc: "A descoberta mais famosa de Seaborg. O Plutônio-239 é físsil e foi usado na bomba 'Fat Man', mas também é vital para a energia nuclear civil.",
+          image: "images/seaborg-tp.png",
+        },
+        Am: {
+          name: "Amerício",
+          symbol: "Am",
+          num: 95,
+          year: 1944,
+          usage: "Detectores de Fumaça",
+          origin: "Américas",
+          desc: "Emite partículas alfa e raios gama fracos. É o único isótopo sintético encontrado na casa de milhões de pessoas em detectores de fumaça.",
+          image: "images/radiation.png",
+        },
+        Cm: {
+          name: "Cúrio",
+          symbol: "Cm",
+          num: 96,
+          year: 1944,
+          usage: "Exploração Espacial",
+          origin: "Curie (Marie/Pierre)",
+          desc: "Brilha com uma luz púrpura devido à sua intensa radioatividade. Usado em espectrômetros de raios-X em rovers de Marte, como o Curiosity.",
+          image: "images/curiosity.jpg",
+        },
+        Bk: {
+          name: "Berquélio",
+          symbol: "Bk",
+          num: 97,
+          year: 1949,
+          usage: "Pesquisa Científica",
+          origin: "Berkeley, CA",
+          desc: "Produzido em quantidades minúsculas. Usado principalmente para sintetizar elementos ainda mais pesados.",
+          image: "images/machine.png",
+        },
+        Cf: {
+          name: "Califórnio",
+          symbol: "Cf",
+          num: 98,
+          year: 1950,
+          usage: "Fonte de Nêutrons",
+          origin: "Estado da Califórnia",
+          desc: "Um emissor de nêutrons incrivelmente poderoso. Usado para iniciar reatores e tratar certos tipos de câncer.",
+          image: "images/californio.jpg",
+        },
+        Es: {
+          name: "Einstênio",
+          symbol: "Es",
+          num: 99,
+          year: 1952,
+          usage: "Pesquisa Fundamental",
+          origin: "Albert Einstein",
+          desc: "Descoberto nos destroços da primeira bomba de hidrogênio ('Mike'). Tem meia-vida curta e é difícil de estudar.",
+          image: "images/radiation.png",
+        },
+        Fm: {
+          name: "Férmio",
+          symbol: "Fm",
+          num: 100,
+          year: 1952,
+          usage: "Sem uso comercial",
+          origin: "Enrico Fermi",
+          desc: "O elemento mais pesado que pode ser formado pelo bombardeamento de nêutrons. O limite da 'velha alquimia'.",
+          image: "images/fermi.jpg",
+        },
+        Md: {
+          name: "Mendelévio",
+          symbol: "Md",
+          num: 101,
+          year: 1955,
+          usage: "Pesquisa",
+          origin: "Dmitri Mendeleev",
+          desc: "O primeiro elemento descoberto 'um átomo de cada vez'. Nomeado em homenagem ao criador da Tabela Periódica.",
+          image: "images/seaborg-hero.png",
+        },
+        No: {
+          name: "Nobélio",
+          symbol: "No",
+          num: 102,
+          year: 1958,
+          usage: "Pesquisa",
+          origin: "Alfred Nobel",
+          desc: "Sua descoberta foi contestada por anos. A IUPAC eventualmente creditou a equipe de Berkeley.",
+          image: "images/seaborg-tp.png",
+        },
+        Sg: {
+          name: "Seabórgio",
+          symbol: "Sg",
+          num: 106,
+          year: 1974,
+          usage: "Pesquisa",
+          origin: "Glenn Seaborg",
+          desc: "Nomeado enquanto Seaborg ainda estava vivo. Ele comentou: 'Eles relutaram porque eu ainda não estava morto'.",
+          image: "images/seaborg-hero.png",
+        },
+      };
+
+      // INIT EXPLORER HELPERS
+      const cardName = document.getElementById("el-name");
+      const cardNum = document.getElementById("el-num");
+      const cardDesc = document.getElementById("el-desc");
+      const cardYear = document.getElementById("el-year");
+      const cardUsage = document.getElementById("el-usage");
+      const cardOrigin = document.getElementById("el-origin");
+      const elCard = document.getElementById("el-card");
+
+      function loadElement(key) {
+        if (!elCard) return;
+        // Active State UI
+        document.querySelectorAll(".el-btn").forEach((b) => {
+          b.classList.remove(
+            "bg-amber-500",
+            "text-white",
+            "ring-2",
+            "ring-white",
+          );
+          b.classList.add("bg-white/10", "text-slate-300", "hover:bg-white/20");
+        });
+        const activeBtn = document.querySelector(`button[data-el="${key}"]`);
+        if (activeBtn) {
+          activeBtn.classList.remove(
+            "bg-white/10",
+            "text-slate-300",
+            "hover:bg-white/20",
+          );
+          activeBtn.classList.add(
+            "bg-amber-500",
+            "text-white",
+            "ring-2",
+            "ring-white",
+          );
+        }
+
+        // Content
+        const data = elements[key];
+        if (cardName) cardName.innerText = data.name;
+        if (cardNum) cardNum.innerText = data.num;
+        if (cardDesc) cardDesc.innerText = data.desc;
+        if (cardYear) cardYear.innerText = data.year;
+        if (cardUsage) cardUsage.innerText = data.usage;
+        if (cardOrigin) cardOrigin.innerText = `Origem: ${data.origin}`;
+
+        // Background Image Update
+        let bgLayer = elCard.querySelector(".card-bg-layer");
+        if (!bgLayer) {
+          bgLayer = document.createElement("div");
+          bgLayer.className =
+            "card-bg-layer absolute inset-0 z-0 opacity-20 transition-opacity duration-500 rounded-3xl overflow-hidden pointer-events-none";
+          elCard.style.position = "relative";
+          elCard.insertBefore(bgLayer, elCard.firstChild);
+        }
+
+        bgLayer.style.opacity = "0";
+        setTimeout(() => {
+          bgLayer.innerHTML = `<img src="${data.image}" class="w-full h-full object-cover grayscale mix-blend-overlay hover:mix-blend-normal hover:grayscale-0 transition-all duration-1000 transform scale-105" alt="${data.name} context" loading="lazy">`;
+          bgLayer.style.opacity = "0.2";
+        }, 200);
+      }
+
+      // INIT EXPLORER
+      function initExplorador() {
+        const grid = document.getElementById("btn-grid");
+        if (!grid) return;
+
+        Object.keys(elements).forEach((key) => {
+          const btn = document.createElement("button");
+          btn.className =
+            "el-btn p-4 rounded-xl font-bold transition-all duration-300 flex flex-col items-center justify-center bg-white/10 text-slate-300 hover:bg-white/20 group backdrop-blur-sm";
+          btn.dataset.el = key;
+          btn.onclick = () => loadElement(key);
+          btn.innerHTML = `
+                <span class="text-[10px] opacity-70 mb-1">${elements[key].num}</span>
+                <span class="text-xl group-hover:scale-110 transition-transform">${key}</span>
+             `;
+          grid.appendChild(btn);
+        });
+        loadElement("Pu"); // Start with Plutonium
+      }
+
+      // INIT CONCEPT TOGGLE
+      function initConceptToggle() {
+        const toggleBtn = document.getElementById("toggle-table-btn");
+        if (!toggleBtn) return;
+
+        let isNewShown = false;
+        const btnText = document.getElementById("btn-text");
+        btnText.innerText = "Ver Proposta de Seaborg";
+
+        toggleBtn.onclick = () => {
+          const vOld = document.getElementById("view-old");
+          const vNew = document.getElementById("view-new");
+
+          if (!isNewShown) {
+            vOld.classList.add("hidden");
+            vNew.classList.remove("hidden");
+            btnText.innerText = "Ver Hipótese Antiga";
+            toggleBtn
+              .querySelector(".bg-gradient-to-r")
+              .classList.remove("opacity-0");
+          } else {
+            vNew.classList.add("hidden");
+            vOld.classList.remove("hidden");
+            btnText.innerText = "Ver Proposta de Seaborg";
+            toggleBtn
+              .querySelector(".bg-gradient-to-r")
+              .classList.add("opacity-0");
+          }
+          isNewShown = !isNewShown;
+        };
+      }
+
+      // INIT CHART
+      function initChart() {
+        const chartEl = document.getElementById("timelineChart");
+        if (!chartEl) return;
+        const ctx = chartEl.getContext("2d");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: [
+              1940, 1944, 1945, 1949, 1950, 1952, 1953, 1955, 1958, 1974,
+            ],
+            datasets: [
+              {
+                label: "Número Atômico",
+                data: [94, 95, 96, 97, 98, 99, 100, 101, 102, 106],
+                borderColor: "#f59e0b",
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                borderWidth: 3,
+                pointBackgroundColor: "#fff",
+                pointBorderColor: "#b45309",
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                tension: 0.3,
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 2000,
+              easing: "easeOutQuart",
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#1e293b",
+                padding: 12,
+                titleFont: { size: 14 },
+                bodyFont: { size: 14 },
+                callbacks: {
+                  label: (ctx) => `Elemento ${ctx.raw} (Z)`,
+                },
+              },
+            },
+            scales: {
+              y: {
+                grid: { color: "#f1f5f9" },
+                title: { display: true, text: "Número Atômico (Z)" },
+              },
+              x: {
+                grid: { display: false },
+              },
+            },
+          },
+        });
+      }
+
+      // Particle System
+      function initParticles() {
+        const canvas = document.getElementById("hero-particles");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+
+        let width = (canvas.width = canvas.parentElement.offsetWidth);
+        let height = (canvas.height = canvas.parentElement.offsetHeight);
+
+        window.addEventListener("resize", () => {
+          width = canvas.width = canvas.parentElement.offsetWidth;
+          height = canvas.height = canvas.parentElement.offsetHeight;
+        });
+
+        const particles = [];
+        for (let i = 0; i < 30; i++) {
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            size: Math.random() * 3,
+            alpha: Math.random() * 0.5,
+          });
+        }
+
+        function animate() {
+          ctx.clearRect(0, 0, width, height);
+
+          particles.forEach((p) => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0) p.x = width;
+            if (p.x > width) p.x = 0;
+            if (p.y < 0) p.y = height;
+            if (p.y > height) p.y = 0;
+
+            ctx.fillStyle = `rgba(245, 158, 11, ${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          requestAnimationFrame(animate);
+        }
+        animate();
+      }
+
+      // --- THREE.JS ISLAND OF STABILITY ---
+      function initIsland() {
+        const container = document.getElementById("island-container");
+        if (!container) return;
+
+        // HUD overlay for coordinates
+        let hud = document.getElementById("island-hud");
+        if (!hud) {
+          hud = document.createElement("div");
+          hud.id = "island-hud";
+          hud.className =
+            "absolute top-6 left-6 z-20 pointer-events-none font-mono text-xs text-amber-500 bg-slate-950/90 backdrop-blur-xl px-4 py-3 rounded-xl border border-amber-500/30 opacity-0 transition-opacity duration-300 shadow-2xl";
+          hud.innerHTML = `Z: -- | N: --<br><span class="text-white text-[10px] opacity-70">Desvendando o legado de Seaborg...</span>`;
+          container.appendChild(hud);
+        }
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020617, 0.004);
+
+        const camera = new THREE.PerspectiveCamera(
+          50,
+          container.clientWidth / container.clientHeight,
+          0.1,
+          1000,
+        );
+        const renderer = new THREE.WebGLRenderer({
+          alpha: true,
+          antialias: true,
+        });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.3;
+        controls.maxPolarAngle = Math.PI / 2.1;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.5);
+        scene.add(hemiLight);
+
+        const p1 = new THREE.PointLight(0xf59e0b, 6, 250);
+        p1.position.set(50, 60, 50);
+        scene.add(p1);
+        const p2 = new THREE.PointLight(0x4f46e5, 5, 250);
+        p2.position.set(-50, 40, -50);
+        scene.add(p2);
+
+        const planeSize = 150;
+        const segments = 100;
+        const geometry = new THREE.PlaneGeometry(
+          planeSize,
+          planeSize,
+          segments,
+          segments,
+        );
+        const pos = geometry.attributes.position;
+        const colors = new Float32Array(pos.count * 3);
+
+        const magicZ = [50, 82, 114, 126];
+        const magicN = [50, 82, 126, 184];
+
+        function getStability(z, n) {
+          // Line of Stability N = Z * (1 + 0.0075Z)
+          const targetN = z * (1 + 0.0075 * z);
+          const distToValley = Math.abs(n - targetN);
+
+          let stab = 16 * Math.exp(-Math.pow(distToValley / 10, 2)); // Width of valley
+
+          // Heavy element instability factor
+          if (z > 83) stab *= Math.exp(-(z - 83) * 0.05);
+
+          // Magic Number bonus peaks (Doubly Magic is strongest)
+          magicZ.forEach((mz) => {
+            magicN.forEach((mn) => {
+              const d = Math.sqrt(Math.pow(z - mz, 2) + Math.pow(n - mn, 2));
+              const boost =
+                mz === 82 && mn === 126
+                  ? 10
+                  : mz === 114 && mn === 184
+                    ? 14
+                    : 4;
+              stab += boost * Math.exp(-Math.pow(d / 4, 2));
+            });
+          });
+
+          return stab;
+        }
+
+        for (let i = 0; i < pos.count; i++) {
+          const px = pos.getX(i);
+          const py = pos.getY(i);
+          const n = (px / planeSize + 0.5) * 220;
+          const z = (py / planeSize + 0.5) * 130;
+
+          const h = getStability(z, n) + Math.random() * 0.2; // slight noise
+          pos.setZ(i, h);
+
+          const normH = Math.min(h / 18, 1);
+          if (h > 6) {
+            colors[i * 3] = 0.9 + normH * 0.1;
+            colors[i * 3 + 1] = 0.6 + normH * 0.2;
+            colors[i * 3 + 2] = 0.2;
+          } else {
+            colors[i * 3] = 0.1 + normH * 0.3;
+            colors[i * 3 + 1] = 0.05 + normH * 0.2;
+            colors[i * 3 + 2] = 0.3 + normH * 0.4;
+          }
+        }
+
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+
+        const terrain = new THREE.Mesh(
+          geometry,
+          new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.8,
+            metalness: 0.6,
+            roughness: 0.3,
+          }),
+        );
+        terrain.rotation.x = -Math.PI / 2;
+        scene.add(terrain);
+
+        // Core markers
+        function addLabel(z, n, name, color = 0xf59e0b) {
+          const x = (n / 220 - 0.5) * planeSize;
+          const y = (z / 130 - 0.5) * planeSize;
+          const h = getStability(z, n);
+
+          const marker = new THREE.Group();
+          marker.position.set(x, h + 2, -y);
+
+          const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(h > 10 ? 1 : 0.6, 16, 16),
+            new THREE.MeshBasicMaterial({ color }),
+          );
+          marker.add(dot);
+
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(2, 0.05, 16, 32),
+            new THREE.MeshBasicMaterial({
+              color,
+              transparent: true,
+              opacity: 0.3,
+            }),
+          );
+          ring.rotation.x = Math.PI / 2;
+          marker.add(ring);
+
+          scene.add(marker);
+          return marker;
+        }
+
+        const markers = [
+          {
+            z: 82,
+            n: 126,
+            name: "Chumbo-208",
+            el: addLabel(82, 126, "Pb", 0xffffff),
+          },
+          {
+            z: 92,
+            n: 146,
+            name: "Urânio-238",
+            el: addLabel(92, 146, "U", 0x4ade80),
+          },
+          {
+            z: 106,
+            n: 157,
+            name: "Seabórgio-263",
+            el: addLabel(106, 157, "Sg"),
+          },
+          {
+            z: 114,
+            n: 184,
+            name: "Ilha de Estabilidade",
+            el: addLabel(114, 184, "Isla", 0xf59e0b),
+          },
+        ];
+
+        // Magic Number Grid lines
+        magicN.forEach((n) => {
+          const x = (n / 220 - 0.5) * planeSize;
+          const lineGeo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(x, 0.1, -planeSize / 2),
+            new THREE.Vector3(x, 0.1, planeSize / 2),
+          ]);
+          scene.add(
+            new THREE.Line(
+              lineGeo,
+              new THREE.LineBasicMaterial({
+                color: 0x4f46e5,
+                transparent: true,
+                opacity: 0.2,
+              }),
+            ),
+          );
+        });
+        magicZ.forEach((z) => {
+          const y = (z / 130 - 0.5) * planeSize;
+          const lineGeo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-planeSize / 2, 0.1, -y),
+            new THREE.Vector3(planeSize / 2, 0.1, -y),
+          ]);
+          scene.add(
+            new THREE.Line(
+              lineGeo,
+              new THREE.LineBasicMaterial({
+                color: 0xf59e0b,
+                transparent: true,
+                opacity: 0.2,
+              }),
+            ),
+          );
+        });
+
+        // Raycaster for HUD
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        container.addEventListener("mousemove", (e) => {
+          const rect = container.getBoundingClientRect();
+          mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+          mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObject(terrain);
+          if (intersects.length > 0) {
+            const p = intersects[0].point;
+            const n = Math.round((p.x / planeSize + 0.5) * 220);
+            const z = Math.round((-p.z / planeSize + 0.5) * 130);
+            hud.style.opacity = "1";
+            let closest = "";
+            markers.forEach((m) => {
+              const d = Math.sqrt(Math.pow(z - m.z, 2) + Math.pow(n - m.n, 2));
+              if (d < 5)
+                closest = `<br><span class="text-amber-400">Próximo de: ${m.name}</span>`;
+            });
+            hud.innerHTML = `Z: ${z} (Prótons) | N: ${n} (Neutrões)${closest}`;
+          } else {
+            hud.style.opacity = "0";
+          }
+        });
+
+        camera.position.set(90, 70, 90);
+        camera.lookAt(0, 0, 0);
+
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          const t = Date.now() * 0.001;
+          markers.forEach((m) => {
+            m.el.children[1].scale.set(
+              1 + Math.sin(t * 2) * 0.2,
+              1 + Math.sin(t * 2) * 0.2,
+              1,
+            );
+            m.el.position.y += Math.sin(t * 3 + m.z) * 0.01;
+          });
+          renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener("resize", () => {
+          camera.aspect = container.clientWidth / container.clientHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+      }
+
+      // LIGHTBOX LOGIC
+      function openLightbox(src) {
+        const lb = document.getElementById("image-lightbox");
+        const img = lb.querySelector("img");
+        img.src = src;
+        lb.classList.add("open");
+        document.body.style.overflow = "hidden"; // Prevent scrolling
+      }
+
+      function closeLightbox() {
+        const lb = document.getElementById("image-lightbox");
+        lb.classList.remove("open");
+        document.body.style.overflow = ""; // Re-enable scrolling
+      }
+
+      // Initialize Everything
+      document.addEventListener("DOMContentLoaded", () => {
+        initChart();
+        initExplorador();
+        initParticles();
+        initConceptToggle();
+        setTimeout(initIsland, 500);
+      });
+    </script>
+
+    <!-- Lightbox Modal -->
+    <div id="image-lightbox" class="lightbox" onclick="closeLightbox()">
+      <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+      <img src="" alt="Zoomed view" onclick="event.stopPropagation()" />
+    </div>
+  </body>
+</html>
